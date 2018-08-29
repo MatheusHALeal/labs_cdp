@@ -1,1 +1,1 @@
-# Laboratórios da disciplina Ciências de Dados Descritiva
+# Laboratórios da disciplina Ciências de Dados Preditiva
