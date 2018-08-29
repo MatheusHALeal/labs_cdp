@@ -1,1 +1,1 @@
-# labs_cdp
+Laboratórios da disciplina Ciências de Dados Descritiva
