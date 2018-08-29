@@ -1,0 +1,26 @@
+---
+title: "lab-01"
+author: "Matheus Leal"
+date: "29 de agosto de 2018"
+output: html_document
+---
+
+```{r, echo=FALSE}
+install.packages("RColorBrewer")
+library(tidyverse)
+library(RColorBrewer)
+
+```
+
+##Quais são os deputados que gastaram mais dinheiro da CEAP? Quais são os mais econômicos? 
+```{r quemGastouMais, echo=FALSE}
+
+dados %>%
+  group_by(nomeParlamentar) %>%
+  summarise(gastos = sum(valorLíquido)) %>%
+  arrange(-gastos) %>%
+  slice(1:20) %>%
+  na.omit(.) %>% 
+  ggplot(aes(x = reorder(nomeParlamentar, gastos), y = gastos)) + scale_fill_brewer(palette = "Blues") +
+  geom_col() + coord_flip()
+```
