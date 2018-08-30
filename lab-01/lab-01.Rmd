@@ -9,6 +9,7 @@ output: html_document
 install.packages("RColorBrewer")
 library(tidyverse)
 library(RColorBrewer)
+dados <- read_csv("dadosCEAP.csv")
 
 ```
 
@@ -18,9 +19,35 @@ library(RColorBrewer)
 dados %>%
   group_by(nomeParlamentar) %>%
   summarise(gastos = sum(valorLíquido)) %>%
+  filter(gastos >= 0) %>% 
   arrange(-gastos) %>%
   slice(1:20) %>%
   na.omit(.) %>% 
-  ggplot(aes(x = reorder(nomeParlamentar, gastos), y = gastos)) + scale_fill_brewer(palette = "Blues") +
-  geom_col() + coord_flip()
+  ggplot(aes(x = reorder(nomeParlamentar, gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
+  geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que mais gastaram" , x = "Parlamentares", y = "Gastos")
+```
+
+```{r quemGastouMenos, echo=FALSE}
+
+dados %>%
+  group_by(nomeParlamentar) %>%
+  summarise(gastos = sum(valorLíquido)) %>%
+  filter(gastos >= 0) %>% 
+  arrange(gastos) %>%
+  slice(1:20) %>%
+  na.omit(.) %>% 
+  ggplot(aes(x = reorder(nomeParlamentar, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
+  geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que menos gastaram" , x = "Parlamentares", y = "Gastos")
+```
+```{r quemGastouMaisNoExterior, echo=FALSE}
+
+dados %>%
+  group_by(sgUF) %>%
+  filter(tipoDocumento == 2) %>% 
+  summarise(gastos = sum(valorLíquido)) %>%
+  filter(gastos >= 0) %>% 
+  arrange(gastos) %>%
+  slice(1:27) %>%
+  ggplot(aes(x = reorder(sgUF, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos parlamentares no exterior agrupados por estado" , x = "Estados", y = "Gastos")
 ```
