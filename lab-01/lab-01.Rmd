@@ -7,9 +7,12 @@ output: html_document
 
 ```{r, echo=FALSE}
 install.packages("RColorBrewer")
+install.packages("rgdal")
 library(tidyverse)
-library(RColorBrewer)
 dados <- read_csv("dadosCEAP.csv")
+limites <- read_csv("limiteMensalCEAP.csv")
+
+
 
 ```
 
@@ -18,6 +21,7 @@ dados <- read_csv("dadosCEAP.csv")
 
 dados %>%
   group_by(nomeParlamentar) %>%
+  filter(valorLíquido >= 0) %>% 
   summarise(gastos = sum(valorLíquido)) %>%
   filter(gastos >= 0) %>% 
   arrange(-gastos) %>%
@@ -25,29 +29,62 @@ dados %>%
   na.omit(.) %>% 
   ggplot(aes(x = reorder(nomeParlamentar, gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
   geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que mais gastaram" , x = "Parlamentares", y = "Gastos")
+
 ```
 
 ```{r quemGastouMenos, echo=FALSE}
 
 dados %>%
   group_by(nomeParlamentar) %>%
+  filter(valorLíquido >= 0) %>% 
   summarise(gastos = sum(valorLíquido)) %>%
-  filter(gastos >= 0) %>% 
   arrange(gastos) %>%
   slice(1:20) %>%
   na.omit(.) %>% 
   ggplot(aes(x = reorder(nomeParlamentar, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
   geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que menos gastaram" , x = "Parlamentares", y = "Gastos")
 ```
-```{r quemGastouMaisNoExterior, echo=FALSE}
 
+```{r quemGastouMaisNoExterior, echo=FALSE}
 dados %>%
   group_by(sgUF) %>%
+  filter(valorLíquido >= 0) %>% 
   filter(tipoDocumento == 2) %>% 
   summarise(gastos = sum(valorLíquido)) %>%
-  filter(gastos >= 0) %>% 
   arrange(gastos) %>%
   slice(1:27) %>%
   ggplot(aes(x = reorder(sgUF, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
   geom_col() + labs(title = "Gastos dos parlamentares no exterior agrupados por estado" , x = "Estados", y = "Gastos")
+```
+
+```{r partidosParaibanosQueMaisUsamCEAP, echo=FALSE}
+
+dados %>%
+  group_by(sgPartido) %>%
+  filter(sgUF == "PB") %>% 
+  summarise(usos = n()) %>%
+  arrange(usos) %>%
+  ggplot(aes(x = reorder(sgPartido, -usos), y = usos, fill = -usos))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Partidos que mais usam CEAP" , x = "Partidos", y = "Usos")
+```
+
+```{r partidosParaibanosQueMaisGastam, echo=FALSE}
+
+dados %>%
+  group_by(sgPartido) %>%
+  filter(sgUF == "PB") %>% 
+  filter(valorLíquido >= 0) %>% 
+  summarise(gastos = sum(valorLíquido)) %>%
+  arrange(gastos) %>%
+  ggplot(aes(x = reorder(sgPartido, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos partidos no Estado da Paraíba" , x = "Partidos", y = "Gastos")
+```
+
+```{r deputadosQueMaisUltrapassamLimiteCEAP, echo=FALSE}
+
+merge(x = dados, y = limites) %>%
+  group_by(nomeParlamentar) %>%
+  arrange(gastos) %>%
+  ggplot(aes(x = reorder(sgPartido, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos partidos no Estado da Paraíba" , x = "Partidos", y = "Gastos")
 ```
