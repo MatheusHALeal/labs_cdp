@@ -8,22 +8,22 @@ output: html_document
 ```{r, echo=FALSE}
 
 library(tidyverse)
+library(shiny)
 dados <- read_csv("dadosCEAP.csv")
 limites <- read_csv("limiteMensalCEAP.csv")
-tmp <- read.csv("dadosCEAP.csv")
-tmp <- cbind(tmp, new_column)
-write.csv(tmp, "modified_file.csv")
 
+limites_CEAP <- limites %>% rename(sgUF = UF) 
+dados_CEAP <- full_join(dados, limites_CEAP, by = "sgUF")
 
 ```
 
-##Quais sÃ£o os deputados que gastaram mais dinheiro da CEAP? Quais sÃ£o os mais econÃ´micos? 
+##Quais são os deputados que gastaram mais dinheiro da CEAP? Quais são os mais econômicos? 
 ```{r quemGastouMais, echo=FALSE}
 
 dados %>%
   group_by(nomeParlamentar) %>%
-  filter(valorLÃ­quido >= 0) %>% 
-  summarise(gastos = sum(valorLÃ­quido)) %>%
+  filter(valorLíquido >= 0) %>% 
+  summarise(gastos = sum(valorLíquido)) %>%
   filter(gastos >= 0) %>% 
   arrange(-gastos) %>%
   slice(1:20) %>%
@@ -37,8 +37,8 @@ dados %>%
 
 dados %>%
   group_by(nomeParlamentar) %>%
-  filter(valorLÃ­quido >= 0) %>% 
-  summarise(gastos = sum(valorLÃ­quido)) %>%
+  filter(valorLíquido >= 0) %>% 
+  summarise(gastos = sum(valorLíquido)) %>%
   arrange(gastos) %>%
   slice(1:20) %>%
   na.omit(.) %>% 
@@ -49,9 +49,9 @@ dados %>%
 ```{r quemGastouMaisNoExterior, echo=FALSE}
 dados %>%
   group_by(sgUF) %>%
-  filter(valorLÃ­quido >= 0) %>% 
+  filter(valorLíquido >= 0) %>% 
   filter(tipoDocumento == 2) %>% 
-  summarise(gastos = sum(valorLÃ­quido)) %>%
+  summarise(gastos = sum(valorLíquido)) %>%
   arrange(gastos) %>%
   slice(1:27) %>%
   ggplot(aes(x = reorder(sgUF, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
@@ -74,9 +74,31 @@ dados %>%
 dados %>%
   group_by(sgPartido) %>%
   filter(sgUF == "PB") %>% 
-  filter(valorLÃ­quido >= 0) %>% 
-  summarise(gastos = sum(valorLÃ­quido)) %>%
+  filter(valorLíquido >= 0) %>% 
+  summarise(gastos = sum(valorLíquido)) %>%
   arrange(gastos) %>%
   ggplot(aes(x = reorder(sgPartido, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
-  geom_col() + labs(title = "Gastos dos partidos no Estado da ParaÃ­ba" , x = "Partidos", y = "Gastos")
+  geom_col() + labs(title = "Gastos dos partidos no Estado da Paraíba" , x = "Partidos", y = "Gastos")
+```
+```{r parlamentaresQueMaisUltrapassamLimite, echo=FALSE}
+
+dados_CEAP %>%
+  group_by(nomeParlamentar) %>%
+  filter(valorLíquido > limite_mensal) %>%
+  summarise(ultrapassagens = n())%>%
+  arrange(-ultrapassagens)%>%
+  slice(1:10) %>% 
+  ggplot(aes(x = reorder(nomeParlamentar, ultrapassagens), y = ultrapassagens, fill = -ultrapassagens)) + guides(fill=FALSE) + geom_col() + coord_flip() + labs(title = "Os deputados que mais ultrapassam o limite CEAP do seu estado" , x = "Parlamentares", y = "Ultrapassagens")
+
+```
+```{r estadosQUeMaisGastamComPassagenAereas, echo=FALSE}
+
+dados %>%
+  group_by(sgUF) %>%
+  filter(tipoDespesa == "PASSAGENS AÉREAS") %>% 
+  summarise(passagens = sum(valorLíquido)) %>%
+  arrange(passagens) %>%
+  na.omit() %>% 
+  ggplot(aes(x = reorder(sgUF, -passagens), y = passagens, fill = -passagens))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos parlamentares com Passagens Aéreas por Estado" , x = "Partidos", y = "Estados")
 ```
