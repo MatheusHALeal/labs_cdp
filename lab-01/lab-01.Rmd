@@ -102,3 +102,19 @@ dados %>%
   ggplot(aes(x = reorder(sgUF, -passagens), y = passagens, fill = -passagens))  + guides(fill=FALSE) +
   geom_col() + labs(title = "Gastos dos parlamentares com Passagens Aéreas por Estado" , x = "Partidos", y = "Estados")
 ```
+```{r partidosParaibanosQueMaisGastam, echo=FALSE}
+d1 <- dados %>%
+  group_by(sgPartido, tipoDespesa) %>%
+  filter(sgPartido == "PMDB" |sgPartido == "PT" |sgPartido == "PSDB") %>% 
+  summarise(usoPorDespesa = n()) %>% 
+  arrange(-usoPorDespesa)
+
+d1 %>% 
+  group_by(tipoDespesa) %>% 
+  summarise(numeroDeOperacoes = sum(usoPorDespesa)) %>% 
+  arrange(-numeroDeOperacoes) %>% 
+  slice(1:10) %>% 
+  ggplot(aes(x = reorder(tipoDespesa, numeroDeOperacoes), y = numeroDeOperacoes, fill = -numeroDeOperacoes))  + guides(fill=FALSE) +
+  geom_col() + coord_flip() +labs(title = "Gastos mais comuns" , x = "Tipo de Despesa", y = "Quantidade de usos")
+  
+```
