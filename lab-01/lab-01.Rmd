@@ -1,40 +1,41 @@
 ---
-title: "lab-01"
+title: "Análise de Gastos de Deputados: Nossas Perguntas"
 author: "Matheus Leal"
-date: "29 de agosto de 2018"
+date: "03 de setembro de 2018"
 output: html_document
 ---
 
+
+#####Primeiro, começaremos lendo os dados que vamos utilizar e carregar as bibliotecas necessárias
 ```{r, echo=FALSE}
 
 library(tidyverse)
 library(shiny)
 dados <- read_csv("dadosCEAP.csv")
-limites <- read_csv("limiteMensalCEAP.csv")
 
-limites_CEAP <- limites %>% rename(sgUF = UF) 
-dados_CEAP <- full_join(dados, limites_CEAP, by = "sgUF")
 
 ```
 
-##Quais são os deputados que gastaram mais dinheiro da CEAP? Quais são os mais econômicos? 
-```{r quemGastouMais, echo=FALSE}
+####Quais são os deputados que gastaram mais dinheiro da CEAP? Quais são os mais econômicos? 
+#####Para descobrir quais deputados gastaram mais o dinheiro da CEAP, devemos agrupá-los pelo nome, além disso, foi criado um filtro para não utilizar as transações com valores negativos nos nossos calculos, uma vez que no nosso conjunto de dados temos recisões, e, como muitas dessas recisões não possuem o valor original pago, poderia gerar receitas negativas. Temos abaixo, então, os 20 deputados que mais gastaram o dinheiro da CEAP.
+```{r quemGastouMais}
 
 dados %>%
   group_by(nomeParlamentar) %>%
   filter(valorLíquido >= 0) %>% 
   summarise(gastos = sum(valorLíquido)) %>%
-  filter(gastos >= 0) %>% 
   arrange(-gastos) %>%
   slice(1:20) %>%
   na.omit(.) %>% 
-  ggplot(aes(x = reorder(nomeParlamentar, gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
-  geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que mais gastaram" , x = "Parlamentares", y = "Gastos")
+  ggplot(aes(x = reorder(nomeParlamentar, as.double(gastos)), y = as.factor(gastos), fill = -gastos))  + guides(fill=FALSE) +
+  geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que mais gastaram" , x = "Parlamentares", y = "Gastos(R$)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 ```
 
-```{r quemGastouMenos, echo=FALSE}
 
+#####De forma análoga, invertendo a ordenação da mesma consulta, temos os 20 deputados que menos gastaram o dinheiro da CEAP.
+```{r quemGastouMenos}
 dados %>%
   group_by(nomeParlamentar) %>%
   filter(valorLíquido >= 0) %>% 
@@ -43,10 +44,15 @@ dados %>%
   slice(1:20) %>%
   na.omit(.) %>% 
   ggplot(aes(x = reorder(nomeParlamentar, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
-  geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que menos gastaram" , x = "Parlamentares", y = "Gastos")
+  geom_col() + coord_flip() + labs(title = "Os 20 parlamentares que menos gastaram" , x = "Parlamentares", y = "Gastos(R$)")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-```{r quemGastouMaisNoExterior, echo=FALSE}
+
+
+####Quais os estados cujos deputados gastam mais no exterior? Quais os estados cujos deputados gastam menos no exterior?
+#####Aqui, desejamos saber os estados em que seus deputados mais gastaram o dinheiro da CEAP em transações no exterior, bem como aqueles que menos gastaram. Para responder essa pergunta, iremos rankear os estados de acordo com seus gastos, primeiro agrupando-os, filtrando para capturarmos apenas despesas no exterior e sumarizando de acordo com a soma dos gastos de todos os deputados de cada estado.
+```{r quemGastouMaisNoExterior}
 dados %>%
   group_by(sgUF) %>%
   filter(valorLíquido >= 0) %>% 
@@ -54,22 +60,30 @@ dados %>%
   summarise(gastos = sum(valorLíquido)) %>%
   arrange(gastos) %>%
   slice(1:27) %>%
-  ggplot(aes(x = reorder(sgUF, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
-  geom_col() + labs(title = "Gastos dos parlamentares no exterior agrupados por estado" , x = "Estados", y = "Gastos")
+  ggplot(aes(x = reorder(sgUF, -as.double(gastos)), y = as.factor(gastos), fill = sgUF))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos parlamentares no exterior agrupados por estado" , x = "Estados", y = "Gastos(R$)")
 ```
 
-```{r partidosParaibanosQueMaisUsamCEAP, echo=FALSE}
+
+######*Rio Grande do Norte, Distrito Federal, Goiás, Mato Grosso do Sul e Amapá não apresentaram gastos no exterior
+
+####Quais os partidos cujos parlamentares mais usam CEAP no estado da Paraíba? Quais são os que menos usam? Mesmas perguntas considerando valores em R$
+#####Aqui, vamos rankear os partidos de acordo com a quantidade de vezes que ele fizeram uso do dinheiro da CEAP, ignorando os valores gastos.
+
+```{r partidosParaibanosQueMaisUsamCEAP}
 
 dados %>%
   group_by(sgPartido) %>%
   filter(sgUF == "PB") %>% 
   summarise(usos = n()) %>%
   arrange(usos) %>%
-  ggplot(aes(x = reorder(sgPartido, -usos), y = usos, fill = -usos))  + guides(fill=FALSE) +
-  geom_col() + labs(title = "Partidos que mais usam CEAP" , x = "Partidos", y = "Usos")
+  ggplot(aes(x = reorder(sgPartido, -usos), y = usos, fill = sgPartido))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Partidos que mais usam CEAP na Paraíba" , x = "Partidos", y = "Usos")
 ```
 
-```{r partidosParaibanosQueMaisGastam, echo=FALSE}
+
+#####Já aqui, como desejamos saber os partidos que mais gastaram o dinheiro da CEAP no estado da Paraíba em reais, o valor de cada despesa nos interessa, dessa forma, alteramos nossa função de sumarização para cosiderar a soma dos valores líquidos das despesas (retirando as recisões). Temos o seguinte resultado:
+```{r partidosParaibanosQueMaisGastam}
 
 dados %>%
   group_by(sgPartido) %>%
@@ -77,10 +91,17 @@ dados %>%
   filter(valorLíquido >= 0) %>% 
   summarise(gastos = sum(valorLíquido)) %>%
   arrange(gastos) %>%
-  ggplot(aes(x = reorder(sgPartido, -gastos), y = gastos, fill = -gastos))  + guides(fill=FALSE) +
-  geom_col() + labs(title = "Gastos dos partidos no Estado da Paraíba" , x = "Partidos", y = "Gastos")
+  ggplot(aes(x = reorder(sgPartido, -as.double(gastos)), y = as.factor(gastos), fill = sgPartido))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos partidos no Estado da Paraíba" , x = "Partidos", y = "Gastos(R$)")
 ```
-```{r parlamentaresQueMaisUltrapassamLimite, echo=FALSE}
+
+
+####Quais os deputados que mais ultrapassam o limite de CEAP do seu estado?
+#####Como os dados que queremos comparar pertencem a dois arquivos diferentes, tivemos que dar um join para termos a possibilidade de analisar e responder a pergunta. Dessa maneira, comparamos os valores das transações com o limite. Aquelas que ultrapassam o limite são agrupados por parlamentar reposável, tendo, assim, o resultado abaixo:
+```{r parlamentaresQueMaisUltrapassamLimite}
+limites <- read_csv("limiteMensalCEAP.csv")
+limites_CEAP <- limites %>% rename(sgUF = UF) 
+dados_CEAP <- full_join(dados, limites_CEAP, by = "sgUF")
 
 dados_CEAP %>%
   group_by(nomeParlamentar) %>%
@@ -88,10 +109,14 @@ dados_CEAP %>%
   summarise(ultrapassagens = n())%>%
   arrange(-ultrapassagens)%>%
   slice(1:10) %>% 
-  ggplot(aes(x = reorder(nomeParlamentar, ultrapassagens), y = ultrapassagens, fill = -ultrapassagens)) + guides(fill=FALSE) + geom_col() + coord_flip() + labs(title = "Os deputados que mais ultrapassam o limite CEAP do seu estado" , x = "Parlamentares", y = "Ultrapassagens")
+  ggplot(aes(x = reorder(nomeParlamentar, as.integer(ultrapassagens)), y = as.factor(ultrapassagens), fill = -ultrapassagens)) + guides(fill=FALSE) + geom_col() + coord_flip() + labs(title = "Os deputados que mais ultrapassam o limite CEAP do seu estado" , x = "Parlamentares", y = "Despesas que ultrapassaram o limite")
 
 ```
-```{r estadosQUeMaisGastamComPassagenAereas, echo=FALSE}
+
+
+####Quais estados cujos parlamentares gastam mais com passagens aéreas? 
+#####Para responder essa pergunta, podemos simplesmente filtrar os tipos de despesa para capturarmos apenas aquelas registradas como passagens aéreas e somá-las, agrupando-as por estado.
+```{r estadosQUeMaisGastamComPassagenAereas}
 
 dados %>%
   group_by(sgUF) %>%
@@ -99,6 +124,49 @@ dados %>%
   summarise(passagens = sum(valorLíquido)) %>%
   arrange(passagens) %>%
   na.omit() %>% 
-  ggplot(aes(x = reorder(sgUF, -passagens), y = passagens, fill = -passagens))  + guides(fill=FALSE) +
-  geom_col() + labs(title = "Gastos dos parlamentares com Passagens Aéreas por Estado" , x = "Partidos", y = "Estados")
+  ggplot(aes(x = reorder(sgUF, -as.double(passagens)), y = as.factor(passagens), fill = sgUF))  + guides(fill=FALSE) +
+  geom_col() + labs(title = "Gastos dos parlamentares com passagens aéreas por Estado" , x = "Estados", y = "Gastos(R$)")
 ```
+
+
+####Escolha três partidos e responda: Quais são os tipos de despesa mais utilizados no uso da CEAP pelos deputados desses partidos? Mesma pergunta considerando valores em R$.
+#####Os partidos escolhido foram o PT, o PMDB e o PSDB. Primeiro, filtramos nosas transações para capturarmos apenas as dos três partidos escolhidos e agrupá-las por tipo de despesa. Como queremos saber a quantidade de transações de cada tipo, devemos apenas pegar a quantidade de vezes em que elas aparecem nos nossos dados.
+```{r gastosMaisComuns, echo=FALSE}
+d1 <- dados %>%
+  group_by(sgPartido, tipoDespesa) %>%
+  filter(sgPartido == "PMDB" |sgPartido == "PT" |sgPartido == "PSDB") %>% 
+  summarise(usoPorDespesa = n()) %>% 
+  arrange(-usoPorDespesa)
+
+d1 %>% 
+  group_by(tipoDespesa) %>% 
+  summarise(numeroDeOperacoes = sum(usoPorDespesa)) %>% 
+  arrange(-numeroDeOperacoes) %>% 
+  slice(1:10) %>% 
+  ggplot(aes(x = reorder(tipoDespesa, numeroDeOperacoes), y = as.factor(numeroDeOperacoes), fill = tipoDespesa))  + guides(fill=FALSE) +
+  geom_col() + coord_flip() +labs(title = "Gastos mais comuns" , x = "Tipo de Despesa", y = "Quantidade de usos") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+```
+
+
+#####Aqui, como os valores importam, rankeamos as dez maiores despesas desses partidos
+```{r gastosMaisComun, echo=FALSE}
+d1 <- dados %>%
+  group_by(sgPartido, tipoDespesa) %>%
+  filter(sgPartido == "PMDB" |sgPartido == "PT" |sgPartido == "PSDB") %>%
+  filter(valorLíquido >= 0) %>%  
+  summarise(gastoPorDespesa = sum(valorLíquido)) %>% 
+  arrange(-gastoPorDespesa)
+
+d1 %>% 
+  group_by(tipoDespesa) %>% 
+  summarise(gastoTotal = sum(gastoPorDespesa)) %>% 
+  arrange(-gastoTotal) %>% 
+  slice(1:10) %>% 
+  ggplot(aes(x = reorder(tipoDespesa, as.double(gastoTotal)), y = as.factor(gastoTotal), fill = tipoDespesa))  + guides(fill=FALSE) +
+  geom_col() + coord_flip() +labs(title = "Maiores despesas" , x = "Tipo de Despesa", y = "Gastos") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+```
+
+
+#####Mais informações sobre a CEAP: http://www2.camara.leg.br/transparencia/acesso-a-informacao/copy_of_perguntas-frequentes/cota-para-o-exercicio-da-atividade-parlamentar
