@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ---
 title: "Análise de Gastos de Deputados: Suas Perguntas"
 author: "Matheus Leal"
@@ -184,4 +185,192 @@ leaflet(data = gastosBrasil2) %>%
 
 
 
+=======
+---
+title: "Análise de Gastos de Deputados: Suas Perguntas"
+author: "Matheus Leal"
+date: "07 de setembro de 2018"
+output: html_document
+---
+
+
+
+#####A CEAP (Cota para Exercício da Atividade Parlamentar) é um auxílio que deputados e deputadas recebem. Nesta análise vamos explorar como esse auxílio vem sendo utilizado. Nesta atividade, como nossos dados do ano de 2017 só vão até o mês de setembro, iremos trabalhar com as informações referentes ao ano de 2016. Primeiro, começaremos lendo os dados que vamos utilizar e carregar as bibliotecas necessárias
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(maptools)     
+library(spdep)          
+library(cartography)    
+library(tmap)           
+library(leaflet)        
+library(rgdal)
+library(RColorBrewer)
+library(tidyverse)
+library(shiny)
+library(lubridate)
+library(ggplot2)
+# Importando dataset----
+ceap <- read_csv("dadosCEAP.csv")
+
+
+```
+
+
+####1 - Gastos com a CEAP ao longo do ano de 2016
+
+#####1.1 - Em nossa primeira observação, gostaríamos de analisar um pouco o comportamento dos gastos do partido com a verba da CEAP no ano de 2016. Para não poluir o gráfico e tornar a visualização complicada, aqui, exibiremos apenas os gasto dos 10 maiores partidos - entendemos por maior aqueles partidos com maior número de filiados (baseado em informações referentes ao ano de 2014) - no ano de 2016.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+options(scipen=999)
+ceap %>% 
+  filter(sgPartido == "PT" | sgPartido == "PMDB" | sgPartido == "PDT" | sgPartido == "PP" | sgPartido == "PSDB" | sgPartido == "PTB"| sgPartido == "DEM" | sgPartido == "PR" | sgPartido == "PSB"| sgPartido == "PPS") %>% 
+  filter(substr(dataEmissao,0,4) == "2016") %>% 
+  group_by(mes = (substr(dataEmissao,6,7)), sgPartido) %>% 
+  filter(valorLíquido >= 0) %>% 
+  summarise(gastosAno = sum(valorLíquido)) %>% 
+  na.omit() %>% 
+  ggplot(aes(x=mes, y=gastosAno, group=sgPartido))  +
+  geom_line(aes(color=sgPartido))+
+  geom_point(aes(color=sgPartido)) +
+  labs(title = "Gastos da CEAP dos partidos ao longo do ano de 2016", x = "Mês", y = "Gastos (R$)", color = "Partidos")
+```
+
+
+
+#####Podemos observar que o PMDB foi o partido que mais gastou em 9 dos 12 meses. Já o PPS se mostrou o mais econômico dos 10. Alguns fatos interessantes: Nos meses de Fevereiro, Março e Agosto, todos os partidos mostraram um aumento nos gastos referente ao mês anterior. Já nos meses de Abril, Julho e Setembro, todos os 10 partidos gastaram menos dinheiro.
+
+####2 - Gastos da CEAP distribuído por estado.
+
+#####2.1 - Como segunda observação, gostaríamos de analisar a distrubuição dos gastos da CEAP no território brasileiro. Nossa primeira análise mostra os gastos totais da CEAP no ano de 2016. Quanto mais escuro tom, maior o gasto. Clique com o mouse sobre os estados para saber o valor dos gastos em reais. 
+```{r 1, warning=FALSE, message = FALSE}
+
+# Importando shapefile (mapa do Brasil)----
+
+shp <- readOGR("Mapa\\.", "BRUFE250GC_SIR", stringsAsFactors=FALSE, encoding="UTF-8")
+
+gastosUF <- ceap %>%
+  filter(valorLíquido >= 0) %>% 
+  filter(substr(dataEmissao,0,4) == "2016") %>% 
+  group_by(sgUF) %>% 
+  summarise(gastos = sum(valorLíquido)) %>% 
+  na.omit()
+
+class(gastosUF)
+
+# Importando códigos do IBGE e adicionando ao dataset----
+
+ibge <- read.csv("Dados\\estadosibge.csv", header=T,sep=",")
+
+gastosUF <- merge(gastosUF,ibge, by.x = "sgUF", by.y = "UF")
+
+# Fazendo a junção entre o dataset e o shapefile----
+
+gastosBrasil <- merge(shp,gastosUF, by.x = "CD_GEOCUF", by.y = "Código.UF")
+
+#Tratamento e transformação dos dados----
+
+proj4string(gastosBrasil) <- CRS("+proj=longlat +datum=WGS84 +no_defs") #adicionando coordenadas geográficas
+
+# Gerando o mapa---
+
+pal <- colorBin("Purples",domain = NULL,n=5) #cores do mapa
+
+
+state_popup <- paste0("<strong>Estado: </strong>", 
+                      gastosBrasil$Unidade.da.Federação, 
+                      "<br><strong>Gastos (R$): </strong>", 
+                      gastosBrasil$gastos)
+leaflet(data = gastosBrasil) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(fillColor = ~pal(gastosBrasil$gastos), 
+              fillOpacity = 0.8, 
+              color = "#BDBDC3", 
+              weight = 1, 
+              popup = state_popup) %>%
+  addLegend("bottomright", pal = pal, values = ~gastosBrasil$gastos,
+            title = "Gastos da CEAP por estado no ano de 2016",
+            opacity = 1)
+
+
+```
+
+
+#####Podemos notar que o estado de São Paulo foi aquele que mais utilizou a cota.
+
+
+#####2.2 - Nossa segunda análise mostra os gastos com a CEAP por parlamentar (em média), ou seja, os gastos da CEAP dos estados no ano de 2016 dividido pela quantidade de parlamentares. 
+
+```{r 2, message=FALSE, warning=FALSE, cache=FALSE}
+# Importando shapefile (mapa do Brasil)----
+
+shp <- readOGR("Mapa\\.", "BRUFE250GC_SIR", stringsAsFactors=FALSE, encoding="UTF-8")
+
+# Extraindo a quantidade de Parlamentares pos Estado
+
+usos <- ceap %>% 
+  group_by(nomeParlamentar, sgUF) %>% 
+  summarise(usos = n())
+nParlamentaresEstado <- usos %>% 
+  group_by(sgUF) %>% 
+  summarise(parlamentares = n()) %>% 
+  na.omit()
+
+# Extraindo o valor dos gastos por estados e dividindo pela quantidade de parlamentares
+
+gastosUF <- ceap %>%
+  filter(valorLíquido >= 0) %>% 
+  filter(substr(dataEmissao,0,4) == "2016") %>% 
+  group_by(sgUF) %>% 
+  summarise(g = sum(valorLíquido)) %>% 
+  na.omit()
+
+gastosUF <- merge(nParlamentaresEstado, gastosUF, by.x = "sgUF", by.y = "sgUF")
+gastosUF <- gastosUF %>% 
+  group_by(sgUF) %>% 
+  summarise(gastos = g/parlamentares)
+
+class(gastosUF)
+
+
+
+# Importando códigos do IBGE e adicionando ao dataset----
+
+ibge <- read.csv("Dados\\estadosibge.csv", header=T,sep=",")
+
+gastosUF <- merge(gastosUF,ibge, by.x = "sgUF", by.y = "UF")
+
+# Fazendo a junção entre o dataset e o shapefile----
+
+gastosBrasil2 <- merge(shp,gastosUF, by.x = "CD_GEOCUF", by.y = "Código.UF")
+
+#Tratamento e transformação dos dados----
+
+proj4string(gastosBrasil2) <- CRS("+proj=longlat +datum=WGS84 +no_defs") #adicionando coordenadas geográficas
+
+# Gerando o mapa---
+
+pal <- colorBin("Purples",domain = NULL,n=5) #cores do mapa
+
+
+state_popup <- paste0("<strong>Estado: </strong>", 
+                      gastosBrasil2$Unidade.da.Federação, 
+                      "<br><strong>Gastos (R$): </strong>", 
+                      gastosBrasil2$gastos)
+leaflet(data = gastosBrasil2) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(fillColor = ~pal(gastosBrasil2$gastos), 
+              fillOpacity = 0.8, 
+              color = "#BDBDC3", 
+              weight = 1, 
+              popup = state_popup) %>%
+  addLegend("bottomright", pal = pal, values = ~gastosBrasil2$gastos,
+            title = "Gastos da CEAP por parlamentar no ano de 2016 distribuídos pelo território brasileiro",
+            opacity = 1)
+
+```
+
+
+#####Dessa maneira, observamos que os parlamentares do estado da Paraíba são aqueles que gastaram mais (em média), utilizando aproximadamente 350 mil da cota.
+
+
+
+>>>>>>> 674c290bf8238997eeb8de0bcbbd358e82903d5c
 #####Mais informações sobre a CEAP: http://www2.camara.leg.br/transparencia/acesso-a-informacao/copy_of_perguntas-frequentes/cota-para-o-exercicio-da-atividade-parlamentar
